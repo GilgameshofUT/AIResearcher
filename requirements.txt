@@ -1,0 +1,8 @@
+chromadb
+langchain
+google-generativeai
+pypdf2
+ebooklib
+beautifulsoup4
+markdown
+
