@@ -27,3 +27,4 @@ This is a very simple RAG/AI system I put together. All the ones I was seeing we
 
    You will type your questions into the terminal and you can either read the response there or much nicer is to just follow the output in Obsidian. I use the plugin Admonition to make some nicer callout formatting. I have it set currently to output sources into the markdown.
 
+Update: I have added a script to delete a collection. Importing the same file twice seems to cause issues. I have updated the import script to first check if a file is already imported and also to handle some errors.
