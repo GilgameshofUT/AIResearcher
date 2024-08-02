@@ -10,9 +10,9 @@ from chromadb.config import Settings
 import warnings
 
 # Usage
-document_directory = "/home/abba/codeprojects/chromadb/startrek"
-chroma_db_path = "/home/abba/codeprojects/chromadb/chromadb"
-collection_name = "startrek"
+document_directory = "/path/to/files/to/import"
+chroma_db_path = "/path/to/chromadb"
+collection_name = "collection"
 
 #supress an annoying warning
 warnings.filterwarnings("ignore", category=UserWarning, module="ebooklib.epub")
