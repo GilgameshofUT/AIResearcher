@@ -7,39 +7,61 @@ import markdown
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import chromadb
 from chromadb.config import Settings
+import warnings
 
 # Usage
-document_directory = "/path/to/input/files"
-chroma_db_path = "/path/to/chromadb"
-collection_name = "collection"
+document_directory = "/home/abba/codeprojects/chromadb/startrek"
+chroma_db_path = "/home/abba/codeprojects/chromadb/chromadb"
+collection_name = "startrek"
+
+#supress an annoying warning
+warnings.filterwarnings("ignore", category=UserWarning, module="ebooklib.epub")
+warnings.filterwarnings("ignore", category=FutureWarning, module="ebooklib.epub")
+
 
 def extract_text_from_pdf(file_path):
-    with open(file_path, 'rb') as file:
-        reader = PyPDF2.PdfReader(file)
-        text = ''
-        for page in reader.pages:
-            text += page.extract_text()
-    return text
+    try:
+        with open(file_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            text = ''
+            for page in reader.pages:
+                text += page.extract_text()
+        return text
+    except Exception as e:
+        print(f"Error processing PDF {file_path}: {str(e)}")
+        return None
 
 def extract_text_from_epub(file_path):
-    book = epub.read_epub(file_path)
-    text = ''
-    for item in book.get_items():
-        if item.get_type() == ebooklib.ITEM_DOCUMENT:
-            soup = BeautifulSoup(item.get_content(), 'html.parser')
-            text += soup.get_text()
-    return text
+    try:
+        book = epub.read_epub(file_path)
+        text = ''
+        for item in book.get_items():
+            if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                soup = BeautifulSoup(item.get_content(), 'html.parser')
+                text += soup.get_text()
+        return text
+    except Exception as e:
+        print(f"Error processing EPUB {file_path}: {str(e)}")
+        return None
 
 def extract_text_from_markdown(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        md_text = file.read()
-    html = markdown.markdown(md_text)
-    soup = BeautifulSoup(html, 'html.parser')
-    return soup.get_text()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            md_text = file.read()
+        html = markdown.markdown(md_text)
+        soup = BeautifulSoup(html, 'html.parser')
+        return soup.get_text()
+    except Exception as e:
+        print(f"Error processing Markdown {file_path}: {str(e)}")
+        return None
 
 def extract_text_from_txt(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        return file.read()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    except Exception as e:
+        print(f"Error processing TXT {file_path}: {str(e)}")
+        return None
 
 def chunk_text(text, chunk_size=1000, chunk_overlap=200):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -55,12 +77,19 @@ def process_documents_to_chroma(directory_path, db_path):
     client = chromadb.PersistentClient(path=db_path)
     collection = client.get_or_create_collection(collection_name)
 
+    # Get all existing document IDs in the collection
+    existing_ids = set(collection.get()["ids"])
+
     # Process each file in the directory
     for filename in os.listdir(directory_path):
         file_path = os.path.join(directory_path, filename)
 
-        #feedback
-        print(f"processing {filename}\n")
+        # Check if the file has already been imported
+        if f"{filename}chunk0" in existing_ids:
+            print(f"Skipping {filename} as it has already been imported.")
+            continue
+
+        print(f"Processing {filename}")
 
         # Extract text based on file type
         if filename.endswith('.pdf'):
@@ -75,14 +104,16 @@ def process_documents_to_chroma(directory_path, db_path):
             print(f"Unsupported file type: {filename}")
             continue
 
-        #Feedback
-        print('Chunking text\n')
+        # If text extraction failed, continue to the next file
+        if text is None:
+            continue
+
+        print('Chunking text')
 
         # Chunk the text
         chunks = chunk_text(text)
 
-        #feedback
-        print('Inserting chunks into DB\n')
+        print('Inserting chunks into DB')
 
         # Insert chunks into ChromaDB
         for i, chunk in enumerate(chunks):
